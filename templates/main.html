@@ -1,7 +1,27 @@
 <html>
 <body>
 <head>
-<link rel="stylesheet" type="text/css" href="mystyles.css">
+<!--<link rel="stylesheet" type="text/css" href="mystyles.css"> -->
+<style>
+body{
+	text-align: center;
+}
+h1{
+	color: #0A2DB8;
+	font-family: Calibri, sans-serif;
+}
+select {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    background-color: #f1f1f1;
+}
+input[type=submit]{
+	padding: 10px 15px;
+    border-radius: 4px;
+}
+
+</style>
 </head>
 <h1>AI Hackathon - Skill Prediction</h1>
 <form action="skill_predictor" method="POST">
@@ -9,11 +29,20 @@
 <select id="skill">
 <option value="AI" selected>AI</option>
 </select>
-
-<input type="submit" name="submit" value="Submit">
+<input type="submit" name="submit" value="Search">
 </input>
 </form>
-	<p>{{skills}}</p>
+
+<br>
+{% if skills %}
+<form action="send_to_bot" method="POST">
+<p>Name  Matching in %</p>
+{% for skill in skills %}
+<input type="checkbox" class="checkbox" name="people" value="{{skill['name']}}">{{skill['name']}} {{skill['skill_ai']}} <br>
+{% endfor %}
+<input type="submit" name="submit" value="Send to Bot"></input>
+</form> <p>{{skills}}</p>
+{% endif %}
 
 </body>
 </html>
