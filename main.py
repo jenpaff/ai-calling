@@ -19,12 +19,18 @@ import os
 
 from flask import Flask, redirect, render_template, request
 
-from google.cloud import datastore
-from google.cloud import storage
-from google.cloud import vision
+import httplib2, argparse, sys, json
+from oauth2client import tools, file, client
+from oauth2client.service_account import ServiceAccountCredentials
+from googleapiclient import discovery
+from googleapiclient.errors import HttpError
 
+form = cgi.FieldStorage()
+searchterm = form.getvalue('skill')
 
-CLOUD_STORAGE_BUCKET = os.environ.get('CLOUD_STORAGE_BUCKET')
+#Project and model configuration
+project_id = 'ai-calling'
+model_id = 'skillspredictions'
 
 
 app = Flask(__name__)
@@ -45,72 +51,72 @@ def homepage():
     return render_template('main.html')
 
 
-@app.route('/upload_photo', methods=['GET', 'POST'])
-def upload_photo():
-    photo = request.files['file']
+@app.route('/skill_predictor', methods=['GET', 'POST'])
+def skill_predictor():
+    #skill = request.form['skill']
+	skill = "Artificial Intelligence"
 
-    # Create a Cloud Storage client.
-    storage_client = storage.Client()
+    """ Use trained model to generate a new prediction """
 
-    # Get the bucket that the file will be uploaded to.
-    bucket = storage_client.get_bucket(CLOUD_STORAGE_BUCKET)
+	api = get_prediction_api()
 
-    # Create a new blob and upload the file's content.
-    blob = bucket.blob(photo.filename)
-    blob.upload_from_string(
-            photo.read(), content_type=photo.content_type)
+	print("Fetching model.")
+	
+	"""
+	#Optionally analyze model stats (big json!)
+	analysis = api.trainedmodels().analyze(project=project_id, id=model_id).execute()
+	print(analysis)
+	exit()
+	"""
 
-    # Make the blob publicly viewable.
-    blob.make_public()
+	#read new record from local file
+	#with open('record.csv') as f:
+	#	record = f.readline().split(',') #csv
 
-    # Create a Cloud Vision client.
-    vision_client = vision.Client()
+	#obtain new prediction
+	prediction = api.trainedmodels().predict(project=project_id, id=model_id, body={
+		'input': {
+			'csvInstance': skill
+		},
+	}).execute()
 
-    # Use the Cloud Vision client to detect a face for our image.
-    source_uri = 'gs://{}/{}'.format(CLOUD_STORAGE_BUCKET, blob.name)
-    image = vision_client.image(source_uri=source_uri)
-    faces = image.detect_faces(limit=1)
+	#retrieve classified label and reliability measures for each class
+	label = prediction.get('outputLabel')
+	stats = prediction.get('outputMulti')
 
-    # If a face is detected, save to Datastore the likelihood that the face
-    # displays 'joy,' as determined by Google's Machine Learning algorithm.
-    if len(faces) > 0:
-        face = faces[0]
+	#show results
+    print("Prediction is working") 
+    print(prediction)
+	print(label)
+	print(stats)
 
-        # Convert the face.emotions.joy enum type to a string, which will be
-        # something like 'Likelihood.VERY_LIKELY'. Parse that string by the
-        # period to extract only the 'VERY_LIKELY' portion.
-        face_joy = str(face.emotions.joy).split('.')[1]
-    else:
-        face_joy = 'Unknown'
 
-    # Create a Cloud Datastore client.
-    datastore_client = datastore.Client()
+def get_prediction_api(service_account=True):
+	scope = [
+		'https://www.googleapis.com/auth/prediction',
+		'https://www.googleapis.com/auth/devstorage.read_only'
+	]
+	return get_api('prediction', scope, service_account)
 
-    # Fetch the current date / time.
-    current_datetime = datetime.now()
 
-    # The kind for the new entity.
-    kind = 'Faces'
+def get_api(api, scope, service_account=True):
+	""" Build API client based on oAuth2 authentication """
+	STORAGE = file.Storage('oAuth2.json') #local storage of oAuth tokens
+	credentials = STORAGE.get()
+	if credentials is None or credentials.invalid: #check if new oAuth flow is needed
+		if service_account: #server 2 server flow
+			credentials = ServiceAccountCredentials('service_account.json', scopes=scope)
+			STORAGE.put(credentials)
+		else: #normal oAuth2 flow
+			CLIENT_SECRETS = os.path.join(os.path.dirname(__file__), 'client_secrets.json')
+			FLOW = client.flow_from_clientsecrets(CLIENT_SECRETS, scope=scope)
+			PARSER = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter, parents=[tools.argparser])
+			FLAGS = PARSER.parse_args(sys.argv[1:])
+			credentials = tools.run_flow(FLOW, STORAGE, FLAGS)
 
-    # The name/ID for the new entity.
-    name = blob.name
-
-    # Create the Cloud Datastore key for the new entity.
-    key = datastore_client.key(kind, name)
-
-    # Construct the new entity using the key. Set dictionary values for entity
-    # keys blob_name, storage_public_url, timestamp, and joy.
-    entity = datastore.Entity(key)
-    entity['blob_name'] = blob.name
-    entity['image_public_url'] = blob.public_url
-    entity['timestamp'] = current_datetime
-    entity['joy'] = face_joy
-
-    # Save the new entity to Datastore.
-    datastore_client.put(entity)
-
-    # Redirect to the home page.
-    return redirect('/')
+	#wrap http with credentials
+	http = credentials.authorize(httplib2.Http())
+	return discovery.build(api, "v1.6", http=http)
 
 
 @app.errorhandler(500)
