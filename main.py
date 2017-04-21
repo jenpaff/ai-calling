@@ -22,7 +22,7 @@ from flask import Flask, redirect, render_template, request
 import httplib2, argparse, sys, json
 from oauth2client import tools, file, client
 #from oauth2client.contrib.appengine import AppAssertionCredentials
-from apiclient.discovery import build
+#from apiclient.discovery import build
 from oauth2client.service_account import ServiceAccountCredentials
 #from googleapiclient import discovery
 import cgi
