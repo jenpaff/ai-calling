@@ -21,12 +21,12 @@ from flask import Flask, redirect, render_template, request
 
 import httplib2, argparse, sys, json
 from oauth2client import tools, file, client
-from oauth2client.service_account import ServiceAccountCredentials
-from googleapiclient import discovery
+from oauth2client.appengine import AppAssertionCredentials
+from apiclient.discovery import build
+#from oauth2client.service_account import ServiceAccountCredentials
+#from googleapiclient import discovery
+import cgi
 from googleapiclient.errors import HttpError
-
-form = cgi.FieldStorage()
-searchterm = form.getvalue('skill')
 
 #Project and model configuration
 project_id = 'ai-calling'
@@ -54,11 +54,16 @@ def homepage():
 @app.route('/skill_predictor', methods=['GET', 'POST'])
 def skill_predictor():
     #skill = request.form['skill']
-	skill = "Artificial Intelligence"
+	#form = cgi.FieldStorage()
+	#searchterm = form.getvalue('skill')
+	#skill = "Artificial Intelligence"
 
     """ Use trained model to generate a new prediction """
 
-	api = get_prediction_api()
+	#api = get_prediction_api()
+	
+	http = AppAssertionCredentials('https://www.googleapis.com/auth/prediction').authorize.(httplib2.Http())
+	service = build('prediction', 'v1.6', http=http)
 
 	print("Fetching model.")
 	
@@ -74,9 +79,9 @@ def skill_predictor():
 	#	record = f.readline().split(',') #csv
 
 	#obtain new prediction
-	prediction = api.trainedmodels().predict(project=project_id, id=model_id, body={
+	prediction = service.trainedmodels().predict(project=project_id, id=model_id, body={
 		'input': {
-			'csvInstance': skill
+			'csvInstance': "Artificial Intelligence"
 		},
 	}).execute()
 
@@ -90,17 +95,17 @@ def skill_predictor():
 	print(label)
 	print(stats)
 
-
+""" 
 def get_prediction_api(service_account=True):
 	scope = [
 		'https://www.googleapis.com/auth/prediction',
 		'https://www.googleapis.com/auth/devstorage.read_only'
 	]
 	return get_api('prediction', scope, service_account)
-
-
+""" 
+""" 
 def get_api(api, scope, service_account=True):
-	""" Build API client based on oAuth2 authentication """
+	Build API client based on oAuth2 authentication
 	STORAGE = file.Storage('oAuth2.json') #local storage of oAuth tokens
 	credentials = STORAGE.get()
 	if credentials is None or credentials.invalid: #check if new oAuth flow is needed
@@ -117,6 +122,7 @@ def get_api(api, scope, service_account=True):
 	#wrap http with credentials
 	http = credentials.authorize(httplib2.Http())
 	return discovery.build(api, "v1.6", http=http)
+""" 
 
 
 @app.errorhandler(500)
