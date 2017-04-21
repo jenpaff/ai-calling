@@ -21,12 +21,11 @@ from flask import Flask, redirect, render_template, request
 
 import httplib2, argparse, sys, json
 from oauth2client import tools, file, client
-#from oauth2client.contrib.appengine import AppAssertionCredentials
-#from apiclient.discovery import build
+from apiclient.discovery import build
 from oauth2client.service_account import ServiceAccountCredentials
-#from googleapiclient import discovery
 import cgi
 from googleapiclient.errors import HttpError
+#from google.appengine.api import mail
 
 #Project and model configuration
 project_id = 'ai-calling'
@@ -38,33 +37,18 @@ app = Flask(__name__)
 
 @app.route('/')
 def homepage(skills=None):
-    # Create a Cloud Datastore client.
-    #datastore_client = datastore.Client()
-
-    # Use the Cloud Datastore client to fetch information from Datastore about
-    # each photo.
-    #query = datastore_client.query(kind='Faces')
-    #image_entities = list(query.fetch())
-    # Return a Jinja2 HTML template and pass in image_entities as a parameter.
-    # return render_template('homepage.html', image_entities=image_entities)
+    # render homepage with skills parameter
     return render_template('main.html', skills=skills)
-
 
 @app.route('/skill_predictor', methods=['GET', 'POST'])
 def skill_predictor():
-    #skill = request.form['skill']
-	#form = cgi.FieldStorage()
-	#searchterm = form.getvalue('skill')
-	#skill = "Artificial Intelligence"
-	""" Use trained model to generate a new prediction """
-	#api = get_prediction_api()
+	
 	print("Build API")
 	
 	scopes = ['https://www.googleapis.com/auth/prediction']
 	credentials = ServiceAccountCredentials.from_json_keyfile_name('key.json', scopes)
 
-	http = credentials.authorize(httplib2.Http())
-	#http = AppAssertionCredentials('https://www.googleapis.com/auth/prediction').authorize(httplib2.Http())	
+	http = credentials.authorize(httplib2.Http())	
 	service = build('prediction', 'v1.6', http=http)
 
 	"""
@@ -94,8 +78,6 @@ def skill_predictor():
 				print (skill_list)
 				rating = make_predictions(skill_list)
 				rating_list.append(current_candidate +" " + str(rating))
-				#rating_result['name'] = current_candidate
-				#rating_result['rating'] = rating
 				print("Name: " + current_candidate + ", Rating: " + str(rating))
 				skill_list = []
 			previous_candidate = current_candidate
@@ -132,35 +114,22 @@ def make_predictions(skill_list):
 	return (count_ai/len(skill_list))
 	#return render_template('main.html', skills=stats)
 
+@app.route('/send_to_bot', methods=['GET', 'POST'])
+def contact_candidate():
+	sender_address = "Karl Müller <zlatko.beg89@gmail.com>"
+	recipientadress = "Zlatko Avdagic <zlatko.avdagic@accenture.com>"
+	recipientname = "Zlatko"
 
-""" 
-def get_prediction_api(service_account=True):
-	scope = [
-		'https://www.googleapis.com/auth/prediction',
-		'https://www.googleapis.com/auth/devstorage.read_only'
-	]
-	return get_api('prediction', scope, service_account)
-""" 
-""" 
-def get_api(api, scope, service_account=True):
-	Build API client based on oAuth2 authentication
-	STORAGE = file.Storage('oAuth2.json') #local storage of oAuth tokens
-	credentials = STORAGE.get()
-	if credentials is None or credentials.invalid: #check if new oAuth flow is needed
-		if service_account: #server 2 server flow
-			credentials = ServiceAccountCredentials('service_account.json', scopes=scope)
-			STORAGE.put(credentials)
-		else: #normal oAuth2 flow
-			CLIENT_SECRETS = os.path.join(os.path.dirname(__file__), 'client_secrets.json')
-			FLOW = client.flow_from_clientsecrets(CLIENT_SECRETS, scope=scope)
-			PARSER = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter, parents=[tools.argparser])
-			FLAGS = PARSER.parse_args(sys.argv[1:])
-			credentials = tools.run_flow(FLOW, STORAGE, FLAGS)
+	message =  google.appengine.api.mail.EmailMessage(sender=sender_address, subject="Invitation to Skype Interview for AI Project")
+	message.to = recipientadress
+	message.body = """Dear """ + recipientname + """: You have been selected as potential candidate for a new AI project. We would like to invite to a short Skype interview to evaluate your potential.To start the interview please click on the link below:
+{https://bot.api.ai/c4cde66f-4cc8-4406-8475-b1d7bcd50b05 }
 
-	#wrap http with credentials
-	http = credentials.authorize(httplib2.Http())
-	return discovery.build(api, "v1.6", http=http)
-""" 
+Best regards,
+Karl
+
+"""
+	message.send()
 
 
 @app.errorhandler(500)
