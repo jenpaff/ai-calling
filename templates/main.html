@@ -29,9 +29,10 @@ input[type=submit]{
 <select id="skill">
 <option value="AI" selected>AI</option>
 </select>
-<input type="submit" name="submit" value="Submit">
+<input type="submit" name="submit" value="Search">
 </input>
 </form>
+
 <br>
 {% if skills %}
 <form action="send_to_bot" method="POST">
@@ -42,6 +43,7 @@ input[type=submit]{
 <input type="submit" name="submit" value="Send to Bot"></input>
 </form>
 {% endif %}
+<p>{{skills}}</p>
 
 </body>
 </html>
