@@ -21,9 +21,9 @@ from flask import Flask, redirect, render_template, request
 
 import httplib2, argparse, sys, json
 from oauth2client import tools, file, client
-from oauth2client.appengine import AppAssertionCredentials
+#from oauth2client.contrib.appengine import AppAssertionCredentials
 from apiclient.discovery import build
-#from oauth2client.service_account import ServiceAccountCredentials
+from oauth2client.service_account import ServiceAccountCredentials
 #from googleapiclient import discovery
 import cgi
 from googleapiclient.errors import HttpError
@@ -37,18 +37,17 @@ app = Flask(__name__)
 
 
 @app.route('/')
-def homepage():
+def homepage(skills=None):
     # Create a Cloud Datastore client.
-    datastore_client = datastore.Client()
+    #datastore_client = datastore.Client()
 
     # Use the Cloud Datastore client to fetch information from Datastore about
     # each photo.
-    query = datastore_client.query(kind='Faces')
-    image_entities = list(query.fetch())
-
+    #query = datastore_client.query(kind='Faces')
+    #image_entities = list(query.fetch())
     # Return a Jinja2 HTML template and pass in image_entities as a parameter.
     # return render_template('homepage.html', image_entities=image_entities)
-    return render_template('main.html')
+    return render_template('main.html', skills=skills)
 
 
 @app.route('/skill_predictor', methods=['GET', 'POST'])
@@ -60,7 +59,12 @@ def skill_predictor():
 	""" Use trained model to generate a new prediction """
 	#api = get_prediction_api()
 	print("Build API")
-	http = AppAssertionCredentials('https://www.googleapis.com/auth/prediction').authorize(httplib2.Http())	
+	
+	scopes = ['https://www.googleapis.com/auth/prediction']
+	credentials = ServiceAccountCredentials.from_json_keyfile_name('key.json', scopes)
+
+	http = credentials.authorize(httplib2.Http())
+	#http = AppAssertionCredentials('https://www.googleapis.com/auth/prediction').authorize(httplib2.Http())	
 	service = build('prediction', 'v1.6', http=http)
 
 	"""
@@ -77,7 +81,7 @@ def skill_predictor():
 	#obtain new prediction
 	prediction = service.trainedmodels().predict(project=project_id, id=model_id, body={
 		'input': {
-			'csvInstance': "Artificial Intelligence"
+			'csvInstance': ["Artificial Intelligence"]
 		},
 	}).execute()
 
@@ -90,6 +94,9 @@ def skill_predictor():
 	print(prediction)
 	print(label)
 	print(stats)
+
+	return render_template('main.html', skills=stats)
+
 
 """ 
 def get_prediction_api(service_account=True):
