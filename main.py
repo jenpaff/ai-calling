@@ -57,23 +57,19 @@ def skill_predictor():
 	#form = cgi.FieldStorage()
 	#searchterm = form.getvalue('skill')
 	#skill = "Artificial Intelligence"
-
-    """ Use trained model to generate a new prediction """
-
+	""" Use trained model to generate a new prediction """
 	#api = get_prediction_api()
-	
-	http = AppAssertionCredentials('https://www.googleapis.com/auth/prediction').authorize.(httplib2.Http())
+	print("Build API")
+	http = AppAssertionCredentials('https://www.googleapis.com/auth/prediction').authorize(httplib2.Http())	
 	service = build('prediction', 'v1.6', http=http)
 
-	print("Fetching model.")
-	
 	"""
 	#Optionally analyze model stats (big json!)
 	analysis = api.trainedmodels().analyze(project=project_id, id=model_id).execute()
 	print(analysis)
 	exit()
 	"""
-
+	
 	#read new record from local file
 	#with open('record.csv') as f:
 	#	record = f.readline().split(',') #csv
@@ -90,8 +86,8 @@ def skill_predictor():
 	stats = prediction.get('outputMulti')
 
 	#show results
-    print("Prediction is working") 
-    print(prediction)
+	print("Prediction is working")
+	print(prediction)
 	print(label)
 	print(stats)
 
