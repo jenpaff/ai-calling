@@ -16,7 +16,7 @@
 from datetime import datetime
 import logging
 import os
-
+import csv
 from flask import Flask, redirect, render_template, request
 
 import httplib2, argparse, sys, json
@@ -75,27 +75,62 @@ def skill_predictor():
 	"""
 	
 	#read new record from local file
-	#with open('record.csv') as f:
-	#	record = f.readline().split(',') #csv
+	skill_list = []
+	rating_list = []
+	candidate_list = []
+	previous_candidate = ""
+	with open('testdata_formatted.csv') as f:
+		csvreader = csv.reader(f, delimiter=',', quotechar='"')
+		for entry in csvreader:
+			current_candidate = entry[0]
+			if previous_candidate == "":
+			#first run
+				previous_candidate = current_candidate
+				skill_list.append(entry[1])
 
-	#obtain new prediction
-	prediction = service.trainedmodels().predict(project=project_id, id=model_id, body={
-		'input': {
-			'csvInstance': ["Artificial Intelligence"]
-		},
-	}).execute()
+			if current_candidate == previous_candidate:
+				skill_list.append(entry[1])
+			else:
+				print (skill_list)
+				rating = make_predictions(skill_list)
+				rating_list.append(current_candidate +" " + str(rating))
+				#rating_result['name'] = current_candidate
+				#rating_result['rating'] = rating
+				print("Name: " + current_candidate + ", Rating: " + str(rating))
+				skill_list = []
+			previous_candidate = current_candidate
+		
+	return render_template('main.html', skills=rating_list)
 
-	#retrieve classified label and reliability measures for each class
-	label = prediction.get('outputLabel')
-	stats = prediction.get('outputMulti')
-
-	#show results
-	print("Prediction is working")
-	print(prediction)
-	print(label)
-	print(stats)
-
-	return render_template('main.html', skills=stats)
+def make_predictions(skill_list):
+	print("Build API")
+	scopes = ['https://www.googleapis.com/auth/prediction']
+	credentials = ServiceAccountCredentials.from_json_keyfile_name('key.json', scopes)
+	http = credentials.authorize(httplib2.Http())
+	service = build('prediction', 'v1.6', http=http)
+	count_ai = 0
+	for skill in skill_list:
+		print (skill)
+		#obtain new prediction LOOP skill list
+		prediction = service.trainedmodels().predict(project=project_id, id=model_id, body={
+			'input': {
+				'csvInstance': [skill]
+			},
+		}).execute()
+	
+		#retrieve classified label and reliability measures for each class
+		label = prediction.get('outputLabel')
+		stats = prediction.get('outputMulti')
+		
+		print ("Prediction finished")
+		#print ("Label: "+label)
+		#print ("Reponse: "+stats)	
+		# generate prediction score: 1 point for AI skill
+		if label == "AI":
+			count_ai+=1
+		
+	return (count_ai/len(skill_list))
+	#return render_template('main.html', skills=stats)
 
 
 """ 
