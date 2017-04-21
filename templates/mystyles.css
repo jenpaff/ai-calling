@@ -1,0 +1,17 @@
+body{
+	text-align: center;
+}
+h1{
+	color: blue;
+	font-family: Calibri, sans-serif;
+}
+select {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    background-color: #f1f1f1;
+}
+input[type=submit]{
+	padding: 10px 15px;
+    border-radius: 4px;
+}
